@@ -305,10 +305,10 @@
                                 doc.addImage(barcodeDataURL, 'PNG', imgX, imgY, barcodeWidth, barcodeHeight);
 
                                 // Draw name below barcode
-                                doc.setFontSize(6);
+                                doc.setFontSize(8);
                                 doc.setFont('helvetica', 'bold');
                                 var textX = x + cellWidth / 2;
-                                var textY = imgY + barcodeHeight + 3;
+                                var textY = imgY + barcodeHeight + 3.5;
                                 doc.text(labelName, textX, textY, { align: 'center' });
 
                                 // Draw dashed border around cell
@@ -320,7 +320,7 @@
                     }
 
                     // Save PDF
-                    doc.save('barcode-labels.pdf');
+                    doc.save(labelName + '.pdf');
 
                     statusMsg.className = 'status success';
                     statusMsg.textContent = 'PDF saved successfully! Check your downloads folder.';
