@@ -1,10 +1,256 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barcode Label Generator - A4 Print</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Barcode Label Generator</title>
+    <style>
+        /* ===== General Styles ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        /* ===== Input Section ===== */
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #777;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #4a90d9;
+            outline: none;
+        }
+
+        .form-group input[type="file"] {
+            padding: 8px;
+        }
+
+        .preview {
+            margin-top: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview img {
+            max-width: 200px;
+            max-height: 80px;
+        }
+
+        .preview p {
+            color: #aaa;
+        }
+
+        .btn-generate {
+            width: 100%;
+            padding: 14px;
+            background: #4a90d9;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-generate:hover {
+            background: #357abd;
+        }
+
+        /* ===== Print Controls ===== */
+        .print-controls {
+            text-align: center;
+            padding: 20px;
+            background: #fff;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none;
+        }
+
+        .btn-print {
+            padding: 12px 40px;
+            background: #27ae60;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0 10px;
+        }
+
+        .btn-print:hover {
+            background: #219a52;
+        }
+
+        .btn-back {
+            padding: 12px 40px;
+            background: #e74c3c;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0 10px;
+        }
+
+        .btn-back:hover {
+            background: #c0392b;
+        }
+
+        /* ===== A4 Print Area ===== */
+        #print-area {
+            display: none;
+        }
+
+        .a4-page {
+            width: 210mm;
+            height: 297mm;
+            margin: 10px auto;
+            padding: 10mm;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            display: grid;
+            align-content: start;
+            justify-items: center;
+            page-break-after: always;
+        }
+
+        .label-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2mm;
+            border: 1px dashed #ccc;
+            overflow: hidden;
+        }
+
+        .label-item img {
+            width: 90%;
+            height: auto;
+            max-height: 70%;
+            object-fit: contain;
+        }
+
+        .label-item .label-name {
+            margin-top: 1mm;
+            font-size: 9px;
+            font-weight: 700;
+            text-align: center;
+            color: #000;
+            word-break: break-word;
+            line-height: 1.2;
+            border-top: 1px solid #000;
+            padding-top: 1mm;
+            width: 90%;
+        }
+
+        /* ===== Print Styles ===== */
+        @media print {
+            body {
+                background: #fff;
+                margin: 0;
+                padding: 0;
+            }
+
+            #input-section,
+            .print-controls {
+                display: none !important;
+            }
+
+            #print-area {
+                display: block !important;
+            }
+
+            .a4-page {
+                width: 210mm;
+                height: 297mm;
+                margin: 0;
+                padding: 10mm;
+                box-shadow: none;
+                page-break-after: always;
+            }
+
+            .label-item {
+                border: 1px dashed #ccc;
+            }
+        }
+
+        /* ===== Screen view when generated ===== */
+        body.generated #input-section {
+            display: none;
+        }
+
+        body.generated #print-area {
+            display: block;
+            padding-bottom: 80px;
+        }
+
+        body.generated .print-controls {
+            display: block !important;
+        }
+    </style>
 </head>
 <body>
     <div class="container" id="input-section">
@@ -47,12 +293,106 @@
     <!-- Print Area -->
     <div id="print-area"></div>
 
-    <!-- Print Controls (shown after generation) -->
-    <div class="print-controls" id="print-controls" style="display:none;">
-        <button id="print-btn" class="btn-print" onclick="window.print()">Print A4 Sheet</button>
-        <button id="back-btn" class="btn-back" onclick="goBack()">Back to Edit</button>
+    <!-- Print Controls -->
+    <div class="print-controls" id="print-controls">
+        <button class="btn-print" onclick="window.print()">Print A4 Sheet</button>
+        <button class="btn-back" onclick="goBack()">Back to Edit</button>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        // DOM Elements
+        var barcodeUpload = document.getElementById('barcode-upload');
+        var previewArea = document.getElementById('preview-area');
+        var labelNameInput = document.getElementById('label-name');
+        var copiesSelect = document.getElementById('copies');
+        var pagesInput = document.getElementById('pages');
+        var generateBtn = document.getElementById('generate-btn');
+        var printArea = document.getElementById('print-area');
+        var printControls = document.getElementById('print-controls');
+
+        var barcodeDataURL = null;
+
+        // Grid configurations for different label counts
+        var gridConfig = {
+            10: { cols: 2, rows: 5 },
+            12: { cols: 3, rows: 4 },
+            15: { cols: 3, rows: 5 },
+            20: { cols: 4, rows: 5 },
+            24: { cols: 4, rows: 6 },
+            30: { cols: 5, rows: 6 }
+        };
+
+        // Preview uploaded barcode
+        barcodeUpload.addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    barcodeDataURL = event.target.result;
+                    previewArea.innerHTML = '<img src="' + barcodeDataURL + '" alt="Barcode Preview">';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Generate A4 sheet
+        generateBtn.addEventListener('click', function() {
+            // Validation
+            if (!barcodeDataURL) {
+                alert('Please upload a barcode image first!');
+                return;
+            }
+
+            var labelName = labelNameInput.value.trim();
+            if (!labelName) {
+                alert('Please enter a name for the label!');
+                return;
+            }
+
+            var labelsPerPage = parseInt(copiesSelect.value);
+            var numPages = parseInt(pagesInput.value);
+            var config = gridConfig[labelsPerPage];
+
+            // Clear previous output
+            printArea.innerHTML = '';
+
+            // Generate pages
+            for (var p = 0; p < numPages; p++) {
+                var page = document.createElement('div');
+                page.className = 'a4-page';
+                page.style.gridTemplateColumns = 'repeat(' + config.cols + ', 1fr)';
+                page.style.gridTemplateRows = 'repeat(' + config.rows + ', 1fr)';
+                page.style.gap = '2mm';
+
+                for (var i = 0; i < labelsPerPage; i++) {
+                    var label = document.createElement('div');
+                    label.className = 'label-item';
+
+                    var img = document.createElement('img');
+                    img.src = barcodeDataURL;
+                    img.alt = 'Barcode';
+
+                    var name = document.createElement('div');
+                    name.className = 'label-name';
+                    name.textContent = labelName;
+
+                    label.appendChild(img);
+                    label.appendChild(name);
+                    page.appendChild(label);
+                }
+
+                printArea.appendChild(page);
+            }
+
+            // Switch to generated view
+            document.body.classList.add('generated');
+        });
+
+        // Go back to edit
+        function goBack() {
+            document.body.classList.remove('generated');
+            printArea.innerHTML = '';
+        }
+    </script>
 </body>
 </html>
