@@ -167,7 +167,7 @@
             width: 210mm;
             height: 297mm;
             margin: 10px auto;
-            padding: 10mm;
+            padding: 5mm;
             background: #fff;
             box-shadow: 0 2px 10px rgba(0,0,0,0.15);
             display: grid;
@@ -181,7 +181,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 2mm;
+            padding: 1mm;
             border: 1px dashed #ccc;
             overflow: hidden;
         }
@@ -195,16 +195,16 @@
         }
 
         .label-item .label-name {
-            margin-top: 1mm;
-            font-size: 9px;
+            margin-top: 0.5mm;
+            font-size: 7px;
             font-weight: 700;
             text-align: center;
             color: #000;
             word-break: break-word;
-            line-height: 1.2;
+            line-height: 1.1;
             border-top: none;
             padding-top: 0;
-            width: 90%;
+            width: 95%;
         }
 
         /* ===== Print Styles ===== */
@@ -228,7 +228,7 @@
                 width: 210mm;
                 height: 297mm;
                 margin: 0;
-                padding: 10mm;
+                padding: 5mm;
                 box-shadow: none;
                 page-break-after: always;
             }
@@ -277,9 +277,10 @@
                 <option value="10">10 (2 columns x 5 rows)</option>
                 <option value="12">12 (3 columns x 4 rows)</option>
                 <option value="15">15 (3 columns x 5 rows)</option>
-                <option value="20" selected>20 (4 columns x 5 rows)</option>
+                <option value="20">20 (4 columns x 5 rows)</option>
                 <option value="24">24 (4 columns x 6 rows)</option>
                 <option value="30">30 (5 columns x 6 rows)</option>
+                <option value="54" selected>54 (6 columns x 9 rows)</option>
             </select>
         </div>
 
@@ -320,7 +321,8 @@
             15: { cols: 3, rows: 5 },
             20: { cols: 4, rows: 5 },
             24: { cols: 4, rows: 6 },
-            30: { cols: 5, rows: 6 }
+            30: { cols: 5, rows: 6 },
+            54: { cols: 6, rows: 9 }
         };
 
         // Preview uploaded barcode
@@ -363,7 +365,7 @@
                 page.className = 'a4-page';
                 page.style.gridTemplateColumns = 'repeat(' + config.cols + ', 1fr)';
                 page.style.gridTemplateRows = 'repeat(' + config.rows + ', 1fr)';
-                page.style.gap = '2mm';
+                page.style.gap = '1mm';
 
                 for (var i = 0; i < labelsPerPage; i++) {
                     var label = document.createElement('div');
