@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barcode Label Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        /* ===== General Styles ===== */
         * {
             margin: 0;
             padding: 0;
@@ -19,7 +19,6 @@
             min-height: 100vh;
         }
 
-        /* ===== Input Section ===== */
         .container {
             max-width: 600px;
             margin: 40px auto;
@@ -106,44 +105,16 @@
             font-weight: 600;
             cursor: pointer;
             transition: background 0.3s;
+            margin-bottom: 10px;
         }
 
         .btn-generate:hover {
             background: #357abd;
         }
 
-        /* ===== Print Controls ===== */
-        .print-controls {
-            text-align: center;
-            padding: 20px;
-            background: #fff;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            z-index: 1000;
-            display: none;
-        }
-
-        .btn-print {
-            padding: 12px 40px;
-            background: #27ae60;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin: 0 10px;
-        }
-
-        .btn-print:hover {
-            background: #219a52;
-        }
-
-        .btn-back {
-            padding: 12px 40px;
+        .btn-pdf {
+            width: 100%;
+            padding: 14px;
             background: #e74c3c;
             color: #fff;
             border: none;
@@ -151,116 +122,43 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            margin: 0 10px;
+            transition: background 0.3s;
         }
 
-        .btn-back:hover {
+        .btn-pdf:hover {
             background: #c0392b;
         }
 
-        /* ===== A4 Print Area ===== */
-        #print-area {
-            display: none;
+        .btn-pdf:disabled {
+            background: #bbb;
+            cursor: not-allowed;
         }
 
-        .a4-page {
-            width: 200mm;
-            height: 287mm;
-            margin: 10px auto;
-            padding: 0;
-            background: #fff;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-            display: grid;
-            align-content: stretch;
-            justify-items: center;
-            page-break-after: always;
-            page-break-inside: avoid;
-        }
-
-        .label-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            border: 1px dashed #ccc;
-            overflow: hidden;
-            width: 100%;
-            height: 100%;
-        }
-
-        .label-item img {
-            width: auto;
-            height: auto;
-            max-width: 95%;
-            max-height: 78%;
-            object-fit: contain;
-        }
-
-        .label-item .label-name {
-            margin-top: 0.5mm;
-            font-size: 7px;
-            font-weight: 700;
+        .status {
             text-align: center;
-            color: #000;
-            word-break: break-word;
-            line-height: 1.1;
-            border-top: none;
-            padding-top: 0;
-            width: 95%;
-        }
-
-        /* ===== Print Styles ===== */
-        @media print {
-            body {
-                background: #fff;
-                margin: 0;
-                padding: 0;
-            }
-
-            #input-section,
-            .print-controls {
-                display: none !important;
-            }
-
-            #print-area {
-                display: block !important;
-            }
-
-            .a4-page {
-                width: 200mm;
-                height: 287mm;
-                margin: 0 auto;
-                padding: 0;
-                box-shadow: none;
-                page-break-after: always;
-                page-break-inside: avoid;
-            }
-
-            .label-item {
-                border: 1px dashed #ccc;
-            }
-        }
-
-        /* ===== Screen view when generated ===== */
-        body.generated #input-section {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
             display: none;
         }
 
-        body.generated #print-area {
+        .status.success {
             display: block;
-            padding-bottom: 80px;
+            background: #d4edda;
+            color: #155724;
         }
 
-        body.generated .print-controls {
-            display: block !important;
+        .status.loading {
+            display: block;
+            background: #fff3cd;
+            color: #856404;
         }
     </style>
 </head>
 <body>
     <div class="container" id="input-section">
         <h1>Barcode Label Generator</h1>
-        <p class="subtitle">Upload barcode image + Enter name = Printable A4 sheet</p>
+        <p class="subtitle">Upload barcode + Enter name = Direct PDF download (no cut issue!)</p>
 
         <div class="form-group">
             <label for="barcode-upload">Upload Barcode Image:</label>
@@ -293,32 +191,22 @@
             <input type="number" id="pages" value="1" min="1" max="20">
         </div>
 
-        <button id="generate-btn" class="btn-generate">Generate A4 Sheet</button>
-    </div>
+        <button id="generate-btn" class="btn-generate">Save as PDF (Direct Download)</button>
 
-    <!-- Print Area -->
-    <div id="print-area"></div>
-
-    <!-- Print Controls -->
-    <div class="print-controls" id="print-controls">
-        <button class="btn-print" onclick="window.print()">Print A4 Sheet</button>
-        <button class="btn-back" onclick="goBack()">Back to Edit</button>
+        <div class="status" id="status-msg"></div>
     </div>
 
     <script>
-        // DOM Elements
         var barcodeUpload = document.getElementById('barcode-upload');
         var previewArea = document.getElementById('preview-area');
         var labelNameInput = document.getElementById('label-name');
         var copiesSelect = document.getElementById('copies');
         var pagesInput = document.getElementById('pages');
         var generateBtn = document.getElementById('generate-btn');
-        var printArea = document.getElementById('print-area');
-        var printControls = document.getElementById('print-controls');
+        var statusMsg = document.getElementById('status-msg');
 
         var barcodeDataURL = null;
 
-        // Grid configurations for different label counts
         var gridConfig = {
             10: { cols: 2, rows: 5 },
             12: { cols: 3, rows: 4 },
@@ -329,7 +217,6 @@
             54: { cols: 6, rows: 9 }
         };
 
-        // Preview uploaded barcode
         barcodeUpload.addEventListener('change', function(e) {
             var file = e.target.files[0];
             if (file) {
@@ -342,9 +229,7 @@
             }
         });
 
-        // Generate A4 sheet
         generateBtn.addEventListener('click', function() {
-            // Validation
             if (!barcodeDataURL) {
                 alert('Please upload a barcode image first!');
                 return;
@@ -356,49 +241,111 @@
                 return;
             }
 
-            var labelsPerPage = parseInt(copiesSelect.value);
-            var numPages = parseInt(pagesInput.value);
-            var config = gridConfig[labelsPerPage];
+            // Show loading
+            statusMsg.className = 'status loading';
+            statusMsg.textContent = 'Generating PDF... Please wait...';
+            generateBtn.disabled = true;
 
-            // Clear previous output
-            printArea.innerHTML = '';
-
-            // Generate pages
-            for (var p = 0; p < numPages; p++) {
-                var page = document.createElement('div');
-                page.className = 'a4-page';
-                page.style.gridTemplateColumns = 'repeat(' + config.cols + ', 1fr)';
-                page.style.gridTemplateRows = 'repeat(' + config.rows + ', 1fr)';
-                page.style.gap = '0';
-
-                for (var i = 0; i < labelsPerPage; i++) {
-                    var label = document.createElement('div');
-                    label.className = 'label-item';
-
-                    var img = document.createElement('img');
-                    img.src = barcodeDataURL;
-                    img.alt = 'Barcode';
-
-                    var name = document.createElement('div');
-                    name.className = 'label-name';
-                    name.textContent = labelName;
-
-                    label.appendChild(img);
-                    label.appendChild(name);
-                    page.appendChild(label);
-                }
-
-                printArea.appendChild(page);
-            }
-
-            // Switch to generated view
-            document.body.classList.add('generated');
+            setTimeout(function() {
+                generatePDF(labelName);
+            }, 100);
         });
 
-        // Go back to edit
-        function goBack() {
-            document.body.classList.remove('generated');
-            printArea.innerHTML = '';
+        function generatePDF(labelName) {
+            try {
+                var jsPDF = window.jspdf.jsPDF;
+                var labelsPerPage = parseInt(copiesSelect.value);
+                var numPages = parseInt(pagesInput.value);
+                var config = gridConfig[labelsPerPage];
+
+                // A4 size in mm: 210 x 297
+                var pageWidth = 210;
+                var pageHeight = 297;
+
+                var doc = new jsPDF('p', 'mm', 'a4');
+
+                // Calculate cell sizes (full page, no margins)
+                var cellWidth = pageWidth / config.cols;
+                var cellHeight = pageHeight / config.rows;
+
+                // Load barcode image
+                var img = new Image();
+                img.onload = function() {
+                    var imgRatio = img.width / img.height;
+
+                    // Barcode takes 75% of cell height, name takes rest
+                    var barcodeMaxHeight = cellHeight * 0.75;
+                    var barcodeMaxWidth = cellWidth * 0.9;
+
+                    // Calculate barcode dimensions maintaining aspect ratio
+                    var barcodeWidth, barcodeHeight;
+                    if (barcodeMaxWidth / imgRatio <= barcodeMaxHeight) {
+                        barcodeWidth = barcodeMaxWidth;
+                        barcodeHeight = barcodeMaxWidth / imgRatio;
+                    } else {
+                        barcodeHeight = barcodeMaxHeight;
+                        barcodeWidth = barcodeMaxHeight * imgRatio;
+                    }
+
+                    for (var p = 0; p < numPages; p++) {
+                        if (p > 0) {
+                            doc.addPage();
+                        }
+
+                        for (var row = 0; row < config.rows; row++) {
+                            for (var col = 0; col < config.cols; col++) {
+                                var x = col * cellWidth;
+                                var y = row * cellHeight;
+
+                                // Center barcode in cell
+                                var imgX = x + (cellWidth - barcodeWidth) / 2;
+                                var imgY = y + (cellHeight - barcodeHeight - 4) / 2;
+
+                                // Draw barcode
+                                doc.addImage(barcodeDataURL, 'PNG', imgX, imgY, barcodeWidth, barcodeHeight);
+
+                                // Draw name below barcode
+                                doc.setFontSize(6);
+                                doc.setFont('helvetica', 'bold');
+                                var textX = x + cellWidth / 2;
+                                var textY = imgY + barcodeHeight + 3;
+                                doc.text(labelName, textX, textY, { align: 'center' });
+
+                                // Draw dashed border around cell
+                                doc.setDrawColor(200, 200, 200);
+                                doc.setLineDashPattern([1, 1], 0);
+                                doc.rect(x, y, cellWidth, cellHeight);
+                            }
+                        }
+                    }
+
+                    // Save PDF
+                    doc.save('barcode-labels.pdf');
+
+                    statusMsg.className = 'status success';
+                    statusMsg.textContent = 'PDF saved successfully! Check your downloads folder.';
+                    generateBtn.disabled = false;
+                };
+
+                img.onerror = function() {
+                    statusMsg.className = 'status';
+                    statusMsg.style.display = 'block';
+                    statusMsg.style.background = '#f8d7da';
+                    statusMsg.style.color = '#721c24';
+                    statusMsg.textContent = 'Error loading image. Please try again.';
+                    generateBtn.disabled = false;
+                };
+
+                img.src = barcodeDataURL;
+
+            } catch(e) {
+                statusMsg.className = 'status';
+                statusMsg.style.display = 'block';
+                statusMsg.style.background = '#f8d7da';
+                statusMsg.style.color = '#721c24';
+                statusMsg.textContent = 'Error: ' + e.message;
+                generateBtn.disabled = false;
+            }
         }
     </script>
 </body>
