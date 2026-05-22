@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',sans-serif; background:#f5f5f5; padding:15px; font-size:13px; }
+    .form-container { background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); }
+    h2 { text-align:center; color:#333; margin-bottom:15px; font-size:18px; }
+    .row { display:flex; gap:10px; margin-bottom:10px; }
+    .col { flex:1; }
+    label { display:block; font-weight:600; margin-bottom:3px; color:#555; font-size:11px; }
+    input, select, textarea { width:100%; padding:7px 10px; border:1px solid #ddd; border-radius:5px; font-size:12px; }
+    input:focus, select:focus { border-color:#4285f4; outline:none; }
+    .section-title { background:#4285f4; color:#fff; padding:8px 12px; border-radius:5px; margin:15px 0 10px; font-weight:600; font-size:13px; }
+    .section-title.green { background:#34a853; }
+    .section-title.orange { background:#ea8600; }
+    
+    /* Items Table */
+    .items-table { width:100%; border-collapse:collapse; margin:10px 0; font-size:11px; }
+    .items-table th { background:#f0f0f0; padding:6px; text-align:left; border:1px solid #ddd; }
+    .items-table td { padding:4px; border:1px solid #ddd; }
+    .items-table input { padding:4px; font-size:11px; border:1px solid #eee; }
+    .items-table input:focus { border-color:#4285f4; }
+    
+    .btn { padding:10px 20px; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; margin:5px; }
+    .btn-primary { background:#4285f4; color:#fff; }
+    .btn-primary:hover { background:#3367d6; }
+    .btn-success { background:#34a853; color:#fff; }
+    .btn-success:hover { background:#2d8f47; }
+    .btn-danger { background:#ea4335; color:#fff; }
+    .btn-danger:hover { background:#c5221f; }
+    .btn-orange { background:#ea8600; color:#fff; }
+    .btn-orange:hover { background:#c77200; }
+    .btn-sm { padding:5px 10px; font-size:11px; }
+    
+    .btn-row { text-align:center; margin-top:15px; }
+    .totals-box { background:#f9f9f9; padding:12px; border-radius:8px; border:1px solid #eee; }
+    .total-row { display:flex; justify-content:space-between; padding:4px 0; }
+    .total-row.grand { font-size:16px; font-weight:700; color:#333; border-top:2px solid #333; padding-top:8px; margin-top:5px; }
+    .status-msg { text-align:center; padding:10px; margin-top:10px; border-radius:5px; display:none; }
+    .status-msg.success { display:block; background:#d4edda; color:#155724; }
+    .status-msg.error { display:block; background:#f8d7da; color:#721c24; }
+    .status-msg.loading { display:block; background:#fff3cd; color:#856404; }
+    .add-item-btn { background:#34a853; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:11px; }
+    .remove-btn { background:#ea4335; color:#fff; border:none; padding:3px 8px; border-radius:3px; cursor:pointer; font-size:10px; }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>📄 Tax Invoice Generator</h2>
+    
+    <!-- Invoice Info -->
+    <div class="section-title">Invoice Details</div>
+    <div class="row">
+      <div class="col"><label>Invoice No</label><input type="text" id="invoiceNo" readonly></div>
+      <div class="col"><label>Date</label><input type="date" id="invoiceDate"></div>
+      <div class="col"><label>Reference No</label><input type="text" id="referenceNo" placeholder="e.g. IBC-12"></div>
+      <div class="col"><label>Payment Terms</label><input type="text" id="paymentTerms" placeholder="e.g. Net 30"></div>
+    </div>
+    
+    <!-- Buyer Info -->
+    <div class="section-title green">Buyer (Bill To)</div>
+    <div class="row">
+      <div class="col"><label>Buyer Name</label><input type="text" id="buyerName" placeholder="Company name"></div>
+      <div class="col"><label>GSTIN</label><input type="text" id="buyerGstin" placeholder="e.g. 29AAFCG9846E1Z7"></div>
+    </div>
+    <div class="row">
+      <div class="col"><label>Address</label><textarea id="buyerAddress" rows="2" placeholder="Full address"></textarea></div>
+      <div class="col"><label>State (with code)</label><input type="text" id="buyerState" placeholder="e.g. Karnataka, Code: 29"></div>
+    </div>
+    
+    <!-- Consignee Info -->
+    <div class="section-title orange">Consignee (Ship To)</div>
+    <div class="row">
+      <div class="col"><label>Consignee Name</label><input type="text" id="consigneeName" placeholder="Ship to company"></div>
+      <div class="col"><label>GSTIN</label><input type="text" id="consigneeGstin" placeholder="GSTIN"></div>
+    </div>
+    <div class="row">
+      <div class="col"><label>Address</label><textarea id="consigneeAddress" rows="2" placeholder="Shipping address"></textarea></div>
+    </div>
+    
+    <!-- Items -->
+    <div class="section-title">Items <button class="add-item-btn" onclick="addItemRow()">+ Add Item</button></div>
+    <div style="overflow-x:auto;">
+      <table class="items-table" id="itemsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Description</th>
+            <th>HSN/SAC</th>
+            <th>Qty</th>
+            <th>Unit</th>
+            <th>Rate (₹)</th>
+            <th>Disc %</th>
+            <th>Amount (₹)</th>
+            <th>Item Code</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody">
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Totals -->
+    <div class="row" style="margin-top:15px;">
+      <div class="col"></div>
+      <div class="col">
+        <div class="totals-box">
+          <div class="total-row"><span>Subtotal:</span><span id="subtotal">₹0.00</span></div>
+          <div class="total-row"><span>CGST (9%):</span><span id="cgstAmt">₹0.00</span></div>
+          <div class="total-row"><span>SGST (9%):</span><span id="sgstAmt">₹0.00</span></div>
+          <div class="total-row"><span>IGST (18%):</span><span id="igstAmt">₹0.00</span></div>
+          <div class="total-row grand"><span>Grand Total:</span><span id="grandTotal">₹0.00</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tax Type -->
+    <div class="row" style="margin-top:10px;">
+      <div class="col">
+        <label>Tax Type:</label>
+        <select id="taxType" onchange="calculateTotals()">
+          <option value="intra">Intra-State (CGST + SGST)</option>
+          <option value="inter">Inter-State (IGST)</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- Buttons -->
+    <div class="btn-row">
+      <button class="btn btn-success" onclick="saveAndDownloadPDF()">💾 Save & Download PDF</button>
+      <button class="btn btn-primary" onclick="saveInvoice()">💾 Save Only</button>
+      <button class="btn btn-danger" onclick="google.script.host.close()">✖ Close</button>
+    </div>
+    
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <script>
+    var itemCount = 0;
+    
+    // Initialize
+    window.onload = function() {
+      // Set today's date
+      var today = new Date().toISOString().split('T')[0];
+      document.getElementById('invoiceDate').value = today;
+      
+      // Get next invoice number
+      google.script.run.withSuccessHandler(function(num) {
+        document.getElementById('invoiceNo').value = num;
+      }).getNextInvoiceNumber();
+      
+      // Add 3 empty rows
+      addItemRow();
+      addItemRow();
+      addItemRow();
+    };
+    
+    // Add item row
+    function addItemRow() {
+      itemCount++;
+      var tbody = document.getElementById('itemsBody');
+      var tr = document.createElement('tr');
+      tr.id = 'row_' + itemCount;
+      tr.innerHTML = 
+        '<td>' + itemCount + '</td>' +
+        '<td><input type="text" id="desc_' + itemCount + '" placeholder="Product name" style="width:140px;"></td>' +
+        '<td><input type="text" id="hsn_' + itemCount + '" placeholder="HSN" style="width:70px;"></td>' +
+        '<td><input type="number" id="qty_' + itemCount + '" value="1" min="1" style="width:50px;" onchange="calcRow(' + itemCount + ')"></td>' +
+        '<td><input type="text" id="unit_' + itemCount + '" value="pcs" style="width:40px;"></td>' +
+        '<td><input type="number" id="rate_' + itemCount + '" value="0" step="0.01" style="width:70px;" onchange="calcRow(' + itemCount + ')"></td>' +
+        '<td><input type="number" id="disc_' + itemCount + '" value="0" step="0.1" style="width:45px;" onchange="calcRow(' + itemCount + ')"></td>' +
+        '<td><strong id="amt_' + itemCount + '">₹0.00</strong></td>' +
+        '<td><input type="text" id="code_' + itemCount + '" placeholder="Code" style="width:70px;"></td>' +
+        '<td><button class="remove-btn" onclick="removeRow(' + itemCount + ')">✖</button></td>';
+      tbody.appendChild(tr);
+    }
+    
+    // Remove item row
+    function removeRow(id) {
+      var row = document.getElementById('row_' + id);
+      if (row) row.remove();
+      calculateTotals();
+    }
+    
+    // Calculate single row
+    function calcRow(id) {
+      var qty = parseFloat(document.getElementById('qty_' + id).value) || 0;
+      var rate = parseFloat(document.getElementById('rate_' + id).value) || 0;
+      var disc = parseFloat(document.getElementById('disc_' + id).value) || 0;
+      
+      var amount = qty * rate;
+      if (disc > 0) amount = amount - (amount * disc / 100);
+      
+      document.getElementById('amt_' + id).textContent = '₹' + amount.toFixed(2);
+      calculateTotals();
+    }
+    
+    // Calculate totals
+    function calculateTotals() {
+      var rows = document.getElementById('itemsBody').getElementsByTagName('tr');
+      var subtotal = 0;
+      
+      for (var i = 0; i < rows.length; i++) {
+        var amtEl = rows[i].querySelector('[id^="amt_"]');
+        if (amtEl) {
+          var amt = parseFloat(amtEl.textContent.replace('₹', '')) || 0;
+          subtotal += amt;
+        }
+      }
+      
+      var taxType = document.getElementById('taxType').value;
+      var cgst = 0, sgst = 0, igst = 0;
+      
+      if (taxType === 'intra') {
+        cgst = subtotal * 0.09;
+        sgst = subtotal * 0.09;
+      } else {
+        igst = subtotal * 0.18;
+      }
+      
+      var grandTotal = subtotal + cgst + sgst + igst;
+      
+      document.getElementById('subtotal').textContent = '₹' + subtotal.toFixed(2);
+      document.getElementById('cgstAmt').textContent = '₹' + cgst.toFixed(2);
+      document.getElementById('sgstAmt').textContent = '₹' + sgst.toFixed(2);
+      document.getElementById('igstAmt').textContent = '₹' + igst.toFixed(2);
+      document.getElementById('grandTotal').textContent = '₹' + grandTotal.toFixed(2);
+    }
+    
+    // Collect form data
+    function collectFormData() {
+      var items = [];
+      var rows = document.getElementById('itemsBody').getElementsByTagName('tr');
+      
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var id = row.id.replace('row_', '');
+        var desc = document.getElementById('desc_' + id);
+        if (!desc || !desc.value.trim()) continue;
+        
+        items.push({
+          description: desc.value.trim(),
+          hsn: document.getElementById('hsn_' + id).value.trim(),
+          quantity: parseFloat(document.getElementById('qty_' + id).value) || 0,
+          unit: document.getElementById('unit_' + id).value.trim(),
+          rate: parseFloat(document.getElementById('rate_' + id).value) || 0,
+          discount: parseFloat(document.getElementById('disc_' + id).value) || 0,
+          amount: parseFloat(document.getElementById('amt_' + id).textContent.replace('₹', '')) || 0,
+          itemCode: document.getElementById('code_' + id).value.trim(),
+          productUpc: ''
+        });
+      }
+      
+      var subtotal = parseFloat(document.getElementById('subtotal').textContent.replace('₹', '')) || 0;
+      var cgst = parseFloat(document.getElementById('cgstAmt').textContent.replace('₹', '')) || 0;
+      var sgst = parseFloat(document.getElementById('sgstAmt').textContent.replace('₹', '')) || 0;
+      var igst = parseFloat(document.getElementById('igstAmt').textContent.replace('₹', '')) || 0;
+      var grandTotal = parseFloat(document.getElementById('grandTotal').textContent.replace('₹', '')) || 0;
+      
+      return {
+        invoiceNo: document.getElementById('invoiceNo').value,
+        date: document.getElementById('invoiceDate').value,
+        referenceNo: document.getElementById('referenceNo').value,
+        paymentTerms: document.getElementById('paymentTerms').value,
+        buyerName: document.getElementById('buyerName').value,
+        buyerGstin: document.getElementById('buyerGstin').value,
+        buyerAddress: document.getElementById('buyerAddress').value,
+        buyerState: document.getElementById('buyerState').value,
+        consigneeName: document.getElementById('consigneeName').value,
+        consigneeGstin: document.getElementById('consigneeGstin').value,
+        consigneeAddress: document.getElementById('consigneeAddress').value,
+        items: items,
+        subtotal: subtotal,
+        cgst: cgst,
+        sgst: sgst,
+        igst: igst,
+        grandTotal: grandTotal
+      };
+    }
+    
+    // Save invoice
+    function saveInvoice() {
+      var data = collectFormData();
+      if (data.items.length === 0) {
+        showStatus('error', 'Please add at least 1 item!');
+        return;
+      }
+      if (!data.buyerName) {
+        showStatus('error', 'Please enter buyer name!');
+        return;
+      }
+      
+      showStatus('loading', 'Saving invoice...');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showStatus('success', result.message);
+          } else {
+            showStatus('error', result.message);
+          }
+        })
+        .withFailureHandler(function(err) {
+          showStatus('error', 'Error: ' + err.message);
+        })
+        .saveInvoice(data);
+    }
+    
+    // Save and Download PDF
+    function saveAndDownloadPDF() {
+      var data = collectFormData();
+      if (data.items.length === 0) {
+        showStatus('error', 'Please add at least 1 item!');
+        return;
+      }
+      if (!data.buyerName) {
+        showStatus('error', 'Please enter buyer name!');
+        return;
+      }
+      
+      showStatus('loading', 'Saving & generating PDF...');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showStatus('success', result.message + ' Generating PDF...');
+            generatePDF(data);
+          } else {
+            showStatus('error', result.message);
+          }
+        })
+        .withFailureHandler(function(err) {
+          showStatus('error', 'Error: ' + err.message);
+        })
+        .saveInvoice(data);
+    }
+    
+    // Generate PDF
+    function generatePDF(data) {
+      try {
+        var jsPDF = window.jspdf.jsPDF;
+        var doc = new jsPDF('p', 'mm', 'a4');
+        var pageWidth = 210;
+        var margin = 10;
+        var y = 15;
+        
+        // Header
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TAX INVOICE', pageWidth / 2, y, {align: 'center'});
+        y += 10;
+        
+        // Company Info
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('GENUINE INNOVATIONS PVT LTD', margin, y);
+        y += 5;
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text('1st floor 84/3 Mundka Industrial Area, Delhi 110041', margin, y);
+        y += 4;
+        doc.text('GSTIN: 07AAHCG8852E1ZF | State: Delhi, Code: 07', margin, y);
+        y += 4;
+        doc.text('Email: seller@unigenlifestyle.com | www.unigenlifestyle.com', margin, y);
+        y += 8;
+        
+        // Invoice details
+        doc.setDrawColor(0);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 5;
+        
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Invoice No: ' + data.invoiceNo, margin, y);
+        doc.text('Date: ' + data.date, pageWidth/2, y);
+        y += 5;
+        doc.text('Reference: ' + (data.referenceNo || '-'), margin, y);
+        doc.text('Payment Terms: ' + (data.paymentTerms || '-'), pageWidth/2, y);
+        y += 7;
+        
+        // Buyer info
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Buyer (Bill To):', margin, y);
+        doc.text('Consignee (Ship To):', pageWidth/2, y);
+        y += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text(data.buyerName || '-', margin, y);
+        doc.text(data.consigneeName || data.buyerName || '-', pageWidth/2, y);
+        y += 4;
+        
+        var buyerAddr = doc.splitTextToSize(data.buyerAddress || '-', 80);
+        doc.text(buyerAddr, margin, y);
+        var consAddr = doc.splitTextToSize(data.consigneeAddress || data.buyerAddress || '-', 80);
+        doc.text(consAddr, pageWidth/2, y);
+        y += Math.max(buyerAddr.length, consAddr.length) * 4 + 2;
+        
+        doc.text('GSTIN: ' + (data.buyerGstin || '-'), margin, y);
+        doc.text('GSTIN: ' + (data.consigneeGstin || data.buyerGstin || '-'), pageWidth/2, y);
+        y += 4;
+        doc.text('State: ' + (data.buyerState || '-'), margin, y);
+        y += 7;
+        
+        // Items table header
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 5;
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        var colX = [margin, margin+8, margin+70, margin+95, margin+115, margin+130, margin+155, margin+175];
+        doc.text('#', colX[0], y);
+        doc.text('Description', colX[1], y);
+        doc.text('HSN', colX[2], y);
+        doc.text('Qty', colX[3], y);
+        doc.text('Rate', colX[4], y);
+        doc.text('Disc%', colX[5], y);
+        doc.text('Amount', colX[6], y);
+        y += 2;
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 4;
+        
+        // Items
+        doc.setFont('helvetica', 'normal');
+        for (var i = 0; i < data.items.length; i++) {
+          var item = data.items[i];
+          if (y > 250) {
+            doc.addPage();
+            y = 15;
+          }
+          doc.text(String(i+1), colX[0], y);
+          doc.text(String(item.description).substring(0, 35), colX[1], y);
+          doc.text(String(item.hsn || ''), colX[2], y);
+          doc.text(String(item.quantity) + ' ' + item.unit, colX[3], y);
+          doc.text(String(item.rate.toFixed(2)), colX[4], y);
+          doc.text(String(item.discount || '0'), colX[5], y);
+          doc.text(String(item.amount.toFixed(2)), colX[6], y);
+          y += 5;
+        }
+        
+        // Totals
+        y += 3;
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.text('Subtotal:', pageWidth - 70, y);
+        doc.text(data.subtotal.toFixed(2), pageWidth - margin, y, {align:'right'});
+        y += 5;
+        
+        if (data.cgst > 0) {
+          doc.text('CGST (9%):', pageWidth - 70, y);
+          doc.text(data.cgst.toFixed(2), pageWidth - margin, y, {align:'right'});
+          y += 5;
+          doc.text('SGST (9%):', pageWidth - 70, y);
+          doc.text(data.sgst.toFixed(2), pageWidth - margin, y, {align:'right'});
+          y += 5;
+        }
+        if (data.igst > 0) {
+          doc.text('IGST (18%):', pageWidth - 70, y);
+          doc.text(data.igst.toFixed(2), pageWidth - margin, y, {align:'right'});
+          y += 5;
+        }
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        y += 2;
+        doc.text('GRAND TOTAL:', pageWidth - 70, y);
+        doc.text('Rs. ' + data.grandTotal.toFixed(2), pageWidth - margin, y, {align:'right'});
+        
+        y += 15;
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.text('This is a Computer Generated Invoice', pageWidth/2, y, {align:'center'});
+        
+        // Save
+        doc.save(data.invoiceNo + '_' + data.buyerName + '.pdf');
+        showStatus('success', 'Invoice saved & PDF downloaded!');
+        
+      } catch(e) {
+        showStatus('error', 'PDF Error: ' + e.message);
+      }
+    }
+    
+    // Status message
+    function showStatus(type, msg) {
+      var el = document.getElementById('statusMsg');
+      el.className = 'status-msg ' + type;
+      el.textContent = msg;
+    }
+  </script>
+</body>
+</html>

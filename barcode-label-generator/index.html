@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Label Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #777;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #4a90d9;
+            outline: none;
+        }
+
+        .form-group input[type="file"] {
+            padding: 8px;
+        }
+
+        .preview {
+            margin-top: 10px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview img {
+            max-width: 200px;
+            max-height: 80px;
+        }
+
+        .preview p {
+            color: #aaa;
+        }
+
+        .btn-generate {
+            width: 100%;
+            padding: 14px;
+            background: #4a90d9;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn-generate:hover {
+            background: #357abd;
+        }
+
+        .btn-pdf {
+            width: 100%;
+            padding: 14px;
+            background: #e74c3c;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-pdf:hover {
+            background: #c0392b;
+        }
+
+        .btn-pdf:disabled {
+            background: #bbb;
+            cursor: not-allowed;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status.success {
+            display: block;
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.loading {
+            display: block;
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <!-- Password Screen -->
+    <div class="container" id="password-section">
+        <h1>Password Required</h1>
+        <p class="subtitle">Enter password to access Barcode Label Generator</p>
+        <div class="form-group">
+            <label for="password-input">Password:</label>
+            <input type="password" id="password-input" placeholder="Enter password">
+        </div>
+        <button id="login-btn" class="btn-generate" style="background:#27ae60;">Unlock</button>
+        <div class="status" id="password-error"></div>
+    </div>
+
+    <!-- Main App (hidden until password entered) -->
+    <div class="container" id="input-section" style="display:none;">
+        <h1>Barcode Label Generator</h1>
+        <p class="subtitle">Upload barcode + Enter name = Direct PDF download (no cut issue!)</p>
+
+        <div class="form-group">
+            <label for="barcode-upload">Upload Barcode Image:</label>
+            <input type="file" id="barcode-upload" accept="image/*">
+            <div class="preview" id="preview-area">
+                <p>No image selected</p>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="label-name">Name (appears under barcode):</label>
+            <input type="text" id="label-name" placeholder="Enter product/item name">
+        </div>
+
+        <div class="form-group">
+            <label for="copies">Number of labels per page:</label>
+            <select id="copies">
+                <option value="10">10 (2 columns x 5 rows)</option>
+                <option value="12">12 (3 columns x 4 rows)</option>
+                <option value="15">15 (3 columns x 5 rows)</option>
+                <option value="20">20 (4 columns x 5 rows)</option>
+                <option value="24">24 (4 columns x 6 rows)</option>
+                <option value="30">30 (5 columns x 6 rows)</option>
+                <option value="54" selected>54 (6 columns x 9 rows)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="pages">Number of pages:</label>
+            <input type="number" id="pages" value="1" min="1" max="20">
+        </div>
+
+        <button id="generate-btn" class="btn-generate">Save as PDF (Direct Download)</button>
+
+        <div class="status" id="status-msg"></div>
+    </div>
+
+    <script>
+        // ===== PASSWORD PROTECTION =====
+        var PASSWORD = 'magtec123';  // <-- YAHAN APNA PASSWORD CHANGE KARO
+
+        var passwordSection = document.getElementById('password-section');
+        var inputSection = document.getElementById('input-section');
+        var loginBtn = document.getElementById('login-btn');
+        var passwordInput = document.getElementById('password-input');
+        var passwordError = document.getElementById('password-error');
+
+        loginBtn.addEventListener('click', function() {
+            checkPassword();
+        });
+
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
+
+        function checkPassword() {
+            var entered = passwordInput.value.trim();
+            if (entered === PASSWORD) {
+                passwordSection.style.display = 'none';
+                inputSection.style.display = 'block';
+                passwordError.style.display = 'none';
+            } else {
+                passwordError.className = 'status';
+                passwordError.style.display = 'block';
+                passwordError.style.background = '#f8d7da';
+                passwordError.style.color = '#721c24';
+                passwordError.textContent = 'Wrong password! Try again.';
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        }
+
+        // ===== MAIN APP =====
+        var barcodeUpload = document.getElementById('barcode-upload');
+        var previewArea = document.getElementById('preview-area');
+        var labelNameInput = document.getElementById('label-name');
+        var copiesSelect = document.getElementById('copies');
+        var pagesInput = document.getElementById('pages');
+        var generateBtn = document.getElementById('generate-btn');
+        var statusMsg = document.getElementById('status-msg');
+
+        var barcodeDataURL = null;
+
+        var gridConfig = {
+            10: { cols: 2, rows: 5 },
+            12: { cols: 3, rows: 4 },
+            15: { cols: 3, rows: 5 },
+            20: { cols: 4, rows: 5 },
+            24: { cols: 4, rows: 6 },
+            30: { cols: 5, rows: 6 },
+            54: { cols: 6, rows: 9 }
+        };
+
+        barcodeUpload.addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    barcodeDataURL = event.target.result;
+                    previewArea.innerHTML = '<img src="' + barcodeDataURL + '" alt="Barcode Preview">';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        generateBtn.addEventListener('click', function() {
+            if (!barcodeDataURL) {
+                alert('Please upload a barcode image first!');
+                return;
+            }
+
+            var labelName = labelNameInput.value.trim();
+            if (!labelName) {
+                alert('Please enter a name for the label!');
+                return;
+            }
+
+            // Show loading
+            statusMsg.className = 'status loading';
+            statusMsg.textContent = 'Generating PDF... Please wait...';
+            generateBtn.disabled = true;
+
+            setTimeout(function() {
+                generatePDF(labelName);
+            }, 100);
+        });
+
+        function generatePDF(labelName) {
+            try {
+                var jsPDF = window.jspdf.jsPDF;
+                var labelsPerPage = parseInt(copiesSelect.value);
+                var numPages = parseInt(pagesInput.value);
+                var config = gridConfig[labelsPerPage];
+
+                // A4 size in mm: 210 x 297
+                var pageWidth = 210;
+                var pageHeight = 297;
+
+                var doc = new jsPDF('p', 'mm', 'a4');
+
+                // Calculate cell sizes (full page, no margins)
+                var cellWidth = pageWidth / config.cols;
+                var cellHeight = pageHeight / config.rows;
+
+                // Load barcode image
+                var img = new Image();
+                img.onload = function() {
+                    var imgRatio = img.width / img.height;
+
+                    // Barcode takes 75% of cell height, name takes rest
+                    var barcodeMaxHeight = cellHeight * 0.75;
+                    var barcodeMaxWidth = cellWidth * 0.9;
+
+                    // Calculate barcode dimensions maintaining aspect ratio
+                    var barcodeWidth, barcodeHeight;
+                    if (barcodeMaxWidth / imgRatio <= barcodeMaxHeight) {
+                        barcodeWidth = barcodeMaxWidth;
+                        barcodeHeight = barcodeMaxWidth / imgRatio;
+                    } else {
+                        barcodeHeight = barcodeMaxHeight;
+                        barcodeWidth = barcodeMaxHeight * imgRatio;
+                    }
+
+                    for (var p = 0; p < numPages; p++) {
+                        if (p > 0) {
+                            doc.addPage();
+                        }
+
+                        for (var row = 0; row < config.rows; row++) {
+                            for (var col = 0; col < config.cols; col++) {
+                                var x = col * cellWidth;
+                                var y = row * cellHeight;
+
+                                // Center barcode in cell
+                                var imgX = x + (cellWidth - barcodeWidth) / 2;
+                                var imgY = y + (cellHeight - barcodeHeight - 4) / 2;
+
+                                // Draw barcode
+                                doc.addImage(barcodeDataURL, 'PNG', imgX, imgY, barcodeWidth, barcodeHeight);
+
+                                // Draw name below barcode
+                                doc.setFontSize(10);
+                                doc.setFont('helvetica', 'bold');
+                                var textX = x + cellWidth / 2;
+                                var textY = imgY + barcodeHeight + 4;
+                                doc.text(labelName, textX, textY, { align: 'center' });
+
+                                // Draw dashed border around cell
+                                doc.setDrawColor(200, 200, 200);
+                                doc.setLineDashPattern([1, 1], 0);
+                                doc.rect(x, y, cellWidth, cellHeight);
+                            }
+                        }
+                    }
+
+                    // Save PDF
+                    doc.save(labelName + '.pdf');
+
+                    statusMsg.className = 'status success';
+                    statusMsg.textContent = 'PDF saved successfully! Check your downloads folder.';
+                    generateBtn.disabled = false;
+                };
+
+                img.onerror = function() {
+                    statusMsg.className = 'status';
+                    statusMsg.style.display = 'block';
+                    statusMsg.style.background = '#f8d7da';
+                    statusMsg.style.color = '#721c24';
+                    statusMsg.textContent = 'Error loading image. Please try again.';
+                    generateBtn.disabled = false;
+                };
+
+                img.src = barcodeDataURL;
+
+            } catch(e) {
+                statusMsg.className = 'status';
+                statusMsg.style.display = 'block';
+                statusMsg.style.background = '#f8d7da';
+                statusMsg.style.color = '#721c24';
+                statusMsg.textContent = 'Error: ' + e.message;
+                generateBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

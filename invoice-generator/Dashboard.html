@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',sans-serif; background:#f0f2f5; padding:20px; }
+    h2 { text-align:center; color:#333; margin-bottom:20px; }
+    
+    /* Stats Cards */
+    .stats-row { display:flex; gap:15px; margin-bottom:20px; }
+    .stat-card { flex:1; background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); text-align:center; }
+    .stat-card .number { font-size:28px; font-weight:700; color:#333; }
+    .stat-card .label { font-size:12px; color:#777; margin-top:5px; }
+    .stat-card.blue { border-top:4px solid #4285f4; }
+    .stat-card.green { border-top:4px solid #34a853; }
+    .stat-card.orange { border-top:4px solid #fbbc04; }
+    .stat-card.red { border-top:4px solid #ea4335; }
+    
+    /* Table */
+    .table-container { background:#fff; border-radius:10px; padding:15px; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+    .table-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .table-header h3 { color:#333; font-size:15px; }
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    thead th { background:#f8f9fa; padding:10px 8px; text-align:left; font-weight:600; color:#555; border-bottom:2px solid #eee; }
+    tbody td { padding:9px 8px; border-bottom:1px solid #f0f0f0; color:#444; }
+    tbody tr:hover { background:#f8f9ff; }
+    .badge { padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; }
+    .badge-green { background:#d4edda; color:#155724; }
+    .badge-blue { background:#cce5ff; color:#004085; }
+    .badge-orange { background:#fff3cd; color:#856404; }
+    
+    .btn { padding:7px 14px; border:none; border-radius:5px; font-size:12px; font-weight:600; cursor:pointer; }
+    .btn-primary { background:#4285f4; color:#fff; }
+    .btn-primary:hover { background:#3367d6; }
+    .btn-success { background:#34a853; color:#fff; }
+    .btn-success:hover { background:#2d8f47; }
+    .btn-sm { padding:4px 8px; font-size:10px; }
+    
+    .loading { text-align:center; padding:40px; color:#777; }
+    .empty-state { text-align:center; padding:30px; color:#999; }
+    .empty-state .icon { font-size:40px; margin-bottom:10px; }
+    
+    .amount { font-weight:600; color:#333; }
+    .refresh-btn { background:none; border:1px solid #ddd; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:11px; }
+    .refresh-btn:hover { background:#f5f5f5; }
+  </style>
+</head>
+<body>
+  <h2>📊 Invoice Dashboard</h2>
+  
+  <!-- Stats Cards -->
+  <div class="stats-row">
+    <div class="stat-card blue">
+      <div class="number" id="totalInvoices">-</div>
+      <div class="label">Total Invoices</div>
+    </div>
+    <div class="stat-card green">
+      <div class="number" id="totalRevenue">-</div>
+      <div class="label">Total Revenue</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="number" id="monthInvoices">-</div>
+      <div class="label">This Month Invoices</div>
+    </div>
+    <div class="stat-card red">
+      <div class="number" id="monthRevenue">-</div>
+      <div class="label">This Month Revenue</div>
+    </div>
+  </div>
+  
+  <!-- Recent Invoices Table -->
+  <div class="table-container">
+    <div class="table-header">
+      <h3>📋 Recent Invoices</h3>
+      <div>
+        <button class="btn btn-success" onclick="createNew()">+ New Invoice</button>
+        <button class="refresh-btn" onclick="loadDashboard()">🔄 Refresh</button>
+      </div>
+    </div>
+    
+    <div id="tableContent">
+      <div class="loading">Loading dashboard data...</div>
+    </div>
+  </div>
+
+  <script>
+    // Load dashboard on open
+    window.onload = function() {
+      loadDashboard();
+    };
+    
+    function loadDashboard() {
+      document.getElementById('tableContent').innerHTML = '<div class="loading">Loading...</div>';
+      
+      google.script.run
+        .withSuccessHandler(function(data) {
+          updateStats(data);
+          updateTable(data.recentInvoices);
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('tableContent').innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>Error loading data: ' + err.message + '</p></div>';
+        })
+        .getDashboardData();
+    }
+    
+    function updateStats(data) {
+      document.getElementById('totalInvoices').textContent = data.totalInvoices || 0;
+      document.getElementById('totalRevenue').textContent = '₹' + formatNumber(data.totalRevenue || 0);
+      document.getElementById('monthInvoices').textContent = data.thisMonthInvoices || 0;
+      document.getElementById('monthRevenue').textContent = '₹' + formatNumber(data.thisMonthRevenue || 0);
+    }
+    
+    function updateTable(invoices) {
+      if (!invoices || invoices.length === 0) {
+        document.getElementById('tableContent').innerHTML = 
+          '<div class="empty-state">' +
+          '<div class="icon">📄</div>' +
+          '<p>No invoices yet. Click "+ New Invoice" to create one!</p>' +
+          '</div>';
+        return;
+      }
+      
+      var html = '<table><thead><tr>' +
+        '<th>Invoice No</th>' +
+        '<th>Date</th>' +
+        '<th>Buyer</th>' +
+        '<th>Amount</th>' +
+        '<th>Status</th>' +
+        '</tr></thead><tbody>';
+      
+      for (var i = 0; i < invoices.length; i++) {
+        var inv = invoices[i];
+        var dateStr = '';
+        if (inv.date) {
+          var d = new Date(inv.date);
+          dateStr = d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
+        }
+        
+        var statusBadge = '<span class="badge badge-green">Created</span>';
+        if (inv.status === 'Paid') {
+          statusBadge = '<span class="badge badge-blue">Paid</span>';
+        } else if (inv.status === 'Pending') {
+          statusBadge = '<span class="badge badge-orange">Pending</span>';
+        }
+        
+        html += '<tr>' +
+          '<td><strong>' + inv.invoiceNo + '</strong></td>' +
+          '<td>' + dateStr + '</td>' +
+          '<td>' + (inv.buyerName || '-') + '</td>' +
+          '<td class="amount">₹' + formatNumber(inv.grandTotal || 0) + '</td>' +
+          '<td>' + statusBadge + '</td>' +
+          '</tr>';
+      }
+      
+      html += '</tbody></table>';
+      document.getElementById('tableContent').innerHTML = html;
+    }
+    
+    function formatNumber(num) {
+      num = parseFloat(num) || 0;
+      return num.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+    
+    function createNew() {
+      google.script.host.close();
+      google.script.run.showInvoiceForm();
+    }
+  </script>
+</body>
+</html>
