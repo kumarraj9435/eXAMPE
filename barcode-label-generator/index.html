@@ -156,7 +156,20 @@
     </style>
 </head>
 <body>
-    <div class="container" id="input-section">
+    <!-- Password Screen -->
+    <div class="container" id="password-section">
+        <h1>Password Required</h1>
+        <p class="subtitle">Enter password to access Barcode Label Generator</p>
+        <div class="form-group">
+            <label for="password-input">Password:</label>
+            <input type="password" id="password-input" placeholder="Enter password">
+        </div>
+        <button id="login-btn" class="btn-generate" style="background:#27ae60;">Unlock</button>
+        <div class="status" id="password-error"></div>
+    </div>
+
+    <!-- Main App (hidden until password entered) -->
+    <div class="container" id="input-section" style="display:none;">
         <h1>Barcode Label Generator</h1>
         <p class="subtitle">Upload barcode + Enter name = Direct PDF download (no cut issue!)</p>
 
@@ -197,6 +210,43 @@
     </div>
 
     <script>
+        // ===== PASSWORD PROTECTION =====
+        var PASSWORD = 'magtec123';  // <-- YAHAN APNA PASSWORD CHANGE KARO
+
+        var passwordSection = document.getElementById('password-section');
+        var inputSection = document.getElementById('input-section');
+        var loginBtn = document.getElementById('login-btn');
+        var passwordInput = document.getElementById('password-input');
+        var passwordError = document.getElementById('password-error');
+
+        loginBtn.addEventListener('click', function() {
+            checkPassword();
+        });
+
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
+
+        function checkPassword() {
+            var entered = passwordInput.value.trim();
+            if (entered === PASSWORD) {
+                passwordSection.style.display = 'none';
+                inputSection.style.display = 'block';
+                passwordError.style.display = 'none';
+            } else {
+                passwordError.className = 'status';
+                passwordError.style.display = 'block';
+                passwordError.style.background = '#f8d7da';
+                passwordError.style.color = '#721c24';
+                passwordError.textContent = 'Wrong password! Try again.';
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        }
+
+        // ===== MAIN APP =====
         var barcodeUpload = document.getElementById('barcode-upload');
         var previewArea = document.getElementById('preview-area');
         var labelNameInput = document.getElementById('label-name');
